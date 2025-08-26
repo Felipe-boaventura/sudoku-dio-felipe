@@ -1,5 +1,6 @@
 package br.com.dio.ui.custom.screen;
 
+import br.com.dio.model.Hint;
 import br.com.dio.model.Space;
 import br.com.dio.service.BoardService;
 import br.com.dio.service.EventEnum;
@@ -7,6 +8,7 @@ import br.com.dio.service.NotifierService;
 import br.com.dio.ui.custom.button.CheckGameStatusButton;
 import br.com.dio.ui.custom.button.FinishGameButton;
 import br.com.dio.ui.custom.button.ResetButton;
+import br.com.dio.ui.custom.button.TipButton;
 import br.com.dio.ui.custom.frame.MainFrame;
 import br.com.dio.ui.custom.input.NumberText;
 import br.com.dio.ui.custom.panel.MainPanel;
@@ -17,9 +19,9 @@ import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import java.awt.Dimension;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static br.com.dio.service.EventEnum.CLEAR_SPACE;
 import static javax.swing.JOptionPane.QUESTION_MESSAGE;
@@ -125,6 +127,19 @@ public class MainScreen {
             }
         });
         mainPanel.add(resetButton);
+    }
+
+
+    private void addTipButton(final JPanel mainPanel) {
+        TipButton tipButton = new TipButton(e -> {
+            var dica = boardService.getHint();
+            if (dica != null) {
+                showMessageDialog(null, "Dica: " + dica);
+            } else {
+                showMessageDialog(null, "Não há dicas disponíveis no momento.");
+            }
+        });
+        mainPanel.add(tipButton);
     }
 
 }

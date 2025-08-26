@@ -2,17 +2,19 @@ package br.com.dio.service;
 
 import br.com.dio.model.Board;
 import br.com.dio.model.GameStatusEnum;
+import br.com.dio.model.Hint;
 import br.com.dio.model.Space;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class BoardService {
 
     private final static int BOARD_LIMIT = 9;
 
     private final Board board;
+
 
     public BoardService(final Map<String, String> gameConfig) {
         this.board = new Board(initBoard(gameConfig));
@@ -52,5 +54,53 @@ public class BoardService {
         }
 
         return spaces;
+    }
+    private List<Integer> getValidNumbersForSpace(List<List<Space>> spaces, int row, int col) {
+        Set<Integer> used = new HashSet<>();
+
+        // Verifica linha
+        for (int c = 0; c < BoardService.BOARD_LIMIT; c++) {
+            int val = spaces.get(c).get(row).getActual();
+            if (val != 0) used.add(val);
+        }
+
+        // Verifica coluna
+        for (int r = 0; r < BoardService.BOARD_LIMIT; r++) {
+            int val = spaces.get(col).get(r).getActual();
+            if (val != 0) used.add(val);
+        }
+
+        // Verifica setor 3x3
+        int startRow = (row / 3) * 3;
+        int startCol = (col / 3) * 3;
+        for (int r = startRow; r < startRow + 3; r++) {
+            for (int c = startCol; c < startCol + 3; c++) {
+                int val = spaces.get(c).get(r).getActual();
+                if (val != 0) used.add(val);
+            }
+        }
+
+        // Retorna os números válidos
+        return IntStream.rangeClosed(1, 9)
+                .filter(n -> !used.contains(n))
+                .boxed()
+                .collect(Collectors.toList());
+    }
+
+    public Hint getHint() {
+        List<List<Space>> spaces = getSpaces();
+
+        for (int row = 0; row < BOARD_LIMIT; row++) {
+            for (int col = 0; col < BOARD_LIMIT; col++) {
+                Space space = spaces.get(col).get(row);
+                if (space.isEmpty()) {
+                    List<Integer> validNumbers = getValidNumbersForSpace(spaces, row, col);
+                    if (!validNumbers.isEmpty()) {
+                        return new Hint(row, col, validNumbers.get(0));
+                    }
+                }
+            }
+        }
+        return null;
     }
 }

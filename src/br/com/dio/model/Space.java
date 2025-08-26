@@ -6,7 +6,6 @@ public class Space {
     private final int expected;
     private final boolean fixed;
 
-
     public Space(final int expected, final boolean fixed) {
         this.expected = expected;
         this.fixed = fixed;
@@ -14,6 +13,11 @@ public class Space {
             actual = expected;
         }
     }
+
+    public boolean isEmpty() {
+        return actual == null;
+    }
+
 
     public Integer getActual() {
         return actual;
