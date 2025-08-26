@@ -6,7 +6,7 @@ import java.awt.event.ActionListener;
 public class TipButton extends JButton {
 
     public TipButton(final ActionListener actionListener){
-        this.setText("Dicas.");
+        this.setText("Dicas");
         this.addActionListener(actionListener);
     }
 }

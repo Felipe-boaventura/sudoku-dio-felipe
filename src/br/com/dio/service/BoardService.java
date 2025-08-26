@@ -5,9 +5,12 @@ import br.com.dio.model.GameStatusEnum;
 import br.com.dio.model.Hint;
 import br.com.dio.model.Space;
 
-import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 public class BoardService {
 
@@ -15,28 +18,33 @@ public class BoardService {
 
     private final Board board;
 
+    private int[][] solutionBoard;
+
 
     public BoardService(final Map<String, String> gameConfig) {
         this.board = new Board(initBoard(gameConfig));
+        this.solutionBoard = new int[BOARD_LIMIT][BOARD_LIMIT];
+        loadSolutionBoard("config/easy.config");
     }
 
-    public List<List<Space>> getSpaces(){
+
+    public List<List<Space>> getSpaces() {
         return board.getSpaces();
     }
 
-    public void reset(){
+    public void reset() {
         board.reset();
     }
 
-    public boolean hasErrors(){
+    public boolean hasErrors() {
         return board.hasErrors();
     }
 
-    public GameStatusEnum getStatus(){
+    public GameStatusEnum getStatus() {
         return board.getStatus();
     }
 
-    public boolean gameIsFinished(){
+    public boolean gameIsFinished() {
         return board.gameIsFinished();
     }
 
@@ -55,52 +63,37 @@ public class BoardService {
 
         return spaces;
     }
-    private List<Integer> getValidNumbersForSpace(List<List<Space>> spaces, int row, int col) {
-        Set<Integer> used = new HashSet<>();
 
-        // Verifica linha
-        for (int c = 0; c < BoardService.BOARD_LIMIT; c++) {
-            int val = spaces.get(c).get(row).getActual();
-            if (val != 0) used.add(val);
-        }
 
-        // Verifica coluna
-        for (int r = 0; r < BoardService.BOARD_LIMIT; r++) {
-            int val = spaces.get(col).get(r).getActual();
-            if (val != 0) used.add(val);
-        }
+    private void loadSolutionBoard(String path) {
 
-        // Verifica setor 3x3
-        int startRow = (row / 3) * 3;
-        int startCol = (col / 3) * 3;
-        for (int r = startRow; r < startRow + 3; r++) {
-            for (int c = startCol; c < startCol + 3; c++) {
-                int val = spaces.get(c).get(r).getActual();
-                if (val != 0) used.add(val);
+        try (BufferedReader reader = new BufferedReader(new FileReader(path))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] parts = line.split("[,;]");
+                int col = Integer.parseInt(parts[0]);
+                int row = Integer.parseInt(parts[1]);
+                int value = Integer.parseInt(parts[2]);
+                solutionBoard[row][col] = value;
             }
+        } catch (IOException e) {
+            System.err.println("Erro ao carregar o gabarito: " + e.getMessage());
         }
-
-        // Retorna os números válidos
-        return IntStream.rangeClosed(1, 9)
-                .filter(n -> !used.contains(n))
-                .boxed()
-                .collect(Collectors.toList());
     }
 
-    public Hint getHint() {
-        List<List<Space>> spaces = getSpaces();
+    public Hint getNextHint() {
+        List<List<Space>> currentSpaces = board.getSpaces();
+        for (int r = 0; r < BOARD_LIMIT; r++) {
+            for (int c = 0; c < BOARD_LIMIT; c++) {
+                Space space = currentSpaces.get(c).get(r);
+                if (space.isEmpty() || (space.getActual() != null && space.getActual() != solutionBoard[r][c])) {
 
-        for (int row = 0; row < BOARD_LIMIT; row++) {
-            for (int col = 0; col < BOARD_LIMIT; col++) {
-                Space space = spaces.get(col).get(row);
-                if (space.isEmpty()) {
-                    List<Integer> validNumbers = getValidNumbersForSpace(spaces, row, col);
-                    if (!validNumbers.isEmpty()) {
-                        return new Hint(row, col, validNumbers.get(0));
-                    }
+                    return new Hint(r, c, solutionBoard[r][c]);
                 }
             }
         }
         return null;
     }
+
+
 }
