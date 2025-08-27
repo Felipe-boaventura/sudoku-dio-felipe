@@ -3,10 +3,7 @@ package br.com.dio.ui.custom.screen;
 import br.com.dio.model.Space;
 import br.com.dio.service.BoardService;
 import br.com.dio.service.NotifierService;
-import br.com.dio.ui.custom.button.CheckGameStatusButton;
-import br.com.dio.ui.custom.button.FinishGameButton;
-import br.com.dio.ui.custom.button.ResetButton;
-import br.com.dio.ui.custom.button.TipButton;
+import br.com.dio.ui.custom.button.*;
 import br.com.dio.ui.custom.frame.MainFrame;
 import br.com.dio.ui.custom.input.NumberText;
 import br.com.dio.ui.custom.panel.MainPanel;
@@ -25,38 +22,70 @@ public class MainScreen {
 
     private final static Dimension dimension = new Dimension(600, 600);
 
-    private final BoardService boardService;
+    private BoardService boardService;
     private final NotifierService notifierService;
 
     private JButton tipButton;
-
     private JButton checkGameStatusButton;
     private JButton finishGameButton;
     private JButton resetButton;
+    private JButton difficultyButton;
+
+    private JPanel mainPanel;
+    private JPanel boardPanel;
+    private JFrame mainFrame;
 
     public MainScreen(final Map<String, String> gameConfig) {
         this.boardService = new BoardService(gameConfig);
         this.notifierService = new NotifierService();
     }
 
+    public MainScreen() {
+        this.boardService = new BoardService("easy");
+        this.notifierService = new NotifierService();
+    }
+
     public void buildMainScreen() {
-        JPanel mainPanel = new MainPanel(dimension);
-        JFrame mainFrame = new MainFrame(dimension, mainPanel);
-        for (int r = 0; r < 9; r += 3) {
-            var endRow = r + 2;
-            for (int c = 0; c < 9; c += 3) {
-                var endCol = c + 2;
-                var spaces = getSpacesFromSector(boardService.getSpaces(), c, endCol, r, endRow);
-                JPanel sector = generateSection(spaces);
-                mainPanel.add(sector);
-            }
-        }
-        addResetButton(mainPanel);
-        addCheckGameStatusButton(mainPanel);
-        addFinishGameButton(mainPanel);
-        addTipButton(mainPanel);
+        mainPanel = new MainPanel(dimension);
+        mainPanel.setLayout(new BorderLayout());
+
+        boardPanel = new JPanel();
+        boardPanel.setLayout(new GridLayout(3, 3));
+        mainPanel.add(boardPanel, BorderLayout.CENTER);
+
+        addSudokuSectorsToPanel(boardPanel);
+
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.setLayout(new FlowLayout(FlowLayout.CENTER, 10, 10)); // Layout para os botões
+
+        addResetButton(buttonPanel);
+        addCheckGameStatusButton(buttonPanel);
+        addFinishGameButton(buttonPanel);
+        addTipButton(buttonPanel);
+        addDifficultyButton(buttonPanel);
+
+        mainPanel.add(buttonPanel, BorderLayout.SOUTH);
+
+        mainFrame = new MainFrame(dimension, mainPanel);
         mainFrame.revalidate();
         mainFrame.repaint();
+    }
+
+    private void addSudokuSectorsToPanel(JPanel targetPanel) {
+        targetPanel.removeAll();
+
+
+        for (int r = 0; r < 9; r += 3) {
+            int endRow = r + 2;
+            for (int c = 0; c < 9; c += 3) {
+                int endCol = c + 2;
+                var spaces = getSpacesFromSector(boardService.getSpaces(), c, endCol, r, endRow);
+                JPanel sector = generateSection(spaces);
+                targetPanel.add(sector);
+            }
+        }
+        targetPanel.revalidate();
+        targetPanel.repaint();
     }
 
     private List<Space> getSpacesFromSector(final List<List<Space>> spaces,
@@ -77,37 +106,39 @@ public class MainScreen {
         return new SudokuSector(fields);
     }
 
-    private void addFinishGameButton(final JPanel mainPanel) {
+    private void addFinishGameButton(final JPanel panel) {
         finishGameButton = new FinishGameButton(e -> {
             if (boardService.gameIsFinished()) {
                 showMessageDialog(null, "Parabéns você concluiu o jogo");
                 resetButton.setEnabled(false);
                 checkGameStatusButton.setEnabled(false);
                 finishGameButton.setEnabled(false);
+                tipButton.setEnabled(false);
+                difficultyButton.setEnabled(false);
             } else {
                 var message = "Seu jogo tem alguma inconsistência, ajuste e tente novamente";
                 showMessageDialog(null, message);
             }
         });
-        mainPanel.add(finishGameButton);
+        panel.add(finishGameButton);
     }
 
-    private void addCheckGameStatusButton(final JPanel mainPanel) {
+    private void addCheckGameStatusButton(final JPanel panel) {
         checkGameStatusButton = new CheckGameStatusButton(e -> {
             var hasErrors = boardService.hasErrors();
             var gameStatus = boardService.getStatus();
             var message = switch (gameStatus) {
                 case NON_STARTED -> "O jogo não foi iniciado";
-                case INCOMPLETE -> "O jogo está imcompleto";
+                case INCOMPLETE -> "O jogo está incompleto";
                 case COMPLETE -> "O jogo está completo";
             };
             message += hasErrors ? " e contém erros" : " e não contém erros";
             showMessageDialog(null, message);
         });
-        mainPanel.add(MainScreen.this.checkGameStatusButton);
+        panel.add(this.checkGameStatusButton);
     }
 
-    private void addResetButton(final JPanel mainPanel) {
+    private void addResetButton(final JPanel panel) {
         resetButton = new ResetButton(e -> {
             var dialogResult = showConfirmDialog(
                     null,
@@ -119,13 +150,17 @@ public class MainScreen {
             if (dialogResult == 0) {
                 boardService.reset();
                 notifierService.notify(CLEAR_SPACE);
+                resetButton.setEnabled(true);
+                checkGameStatusButton.setEnabled(true);
+                finishGameButton.setEnabled(true);
+                tipButton.setEnabled(true);
+                difficultyButton.setEnabled(true);
             }
         });
-        mainPanel.add(resetButton);
+        panel.add(resetButton);
     }
 
-
-    private void addTipButton(final JPanel mainPanel) {
+    private void addTipButton(final JPanel panel) {
         tipButton = new TipButton(e -> {
             var dica = boardService.getNextHint();
             if (dica != null) {
@@ -135,7 +170,34 @@ public class MainScreen {
                 tipButton.setEnabled(false);
             }
         });
-        mainPanel.add(tipButton);
+        panel.add(tipButton);
     }
 
+    private void addDifficultyButton(final JPanel panel) {
+        difficultyButton = new DifficultyButton(e -> {
+            String[] difficulties = {"fácil", "médio", "difícil"};
+            String selectedDifficulty = (String) JOptionPane.showInputDialog(
+                    mainFrame,
+                    "Selecione a dificuldade:",
+                    "Dificuldade do Sudoku",
+                    JOptionPane.QUESTION_MESSAGE,
+                    null,
+                    difficulties,
+                    difficulties[0]
+            );
+            if (selectedDifficulty != null && !selectedDifficulty.isEmpty()) {
+                this.boardService = new BoardService(selectedDifficulty.equals("fácil") ? "easy" :
+                        selectedDifficulty.equals("médio") ? "medium" : "hard");
+                addSudokuSectorsToPanel(boardPanel);
+                resetButton.setEnabled(true);
+                checkGameStatusButton.setEnabled(true);
+                finishGameButton.setEnabled(true);
+                tipButton.setEnabled(true);
+                difficultyButton.setEnabled(true);
+                mainFrame.revalidate();
+                mainFrame.repaint();
+            }
+        });
+        panel.add(difficultyButton);
+    }
 }
